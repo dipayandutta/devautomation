@@ -1,0 +1,21 @@
+### CREATE A POD AND ACCESS IT 
+
+kubectl run hello-pod --image=nginx --restart=Never
+kubectl get pods
+
+# port forwarding
+kubectl port-forward pod/hello-pod 8080:80
+
+# now from the browser 
+http://localhost:8080
+
+
+### Create a namespace and deploy one applicate in that namespace with 3 replicas
+
+kubectl create namespace nginx-namespace
+kubectl create deployment --name=nginx-test --image=nginx --replicas=5
+
+# Check the running pods and deployment in that namespace
+kubectl get deploy --namespace nginx-namespace
+kubectl get pods --namespace nginx-namespace
+
