@@ -1,0 +1,95 @@
+Step-1 -> Install ingress-NGINX Controller 
+	This is the router . without this, ingress will never work
+#kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+Step-2 -> Check the running pods
+#kubectl get pods -n ingress-nginx
+NAME                                        READY   STATUS    RESTARTS   AGE
+ingress-nginx-controller-59bc454dc9-x6wd9   0/1     Running   0          11s
+
+Step-3 -> Check the services
+#kubectl get svc -n ingress-nginx ingress-nginx-controller
+NAME                       TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller   LoadBalancer   10.111.65.104   localhost     80:30139/TCP,443:31375/TCP   32s
+
+Step-4 -> Create the kubernetes deployment
+#kubectl create deployment nginx --image=nginx
+deployment.apps/nginx created
+
+Step-5 -> Get the running pods
+#kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-66686b6766-42klp   1/1     Running   0          5s
+
+Step-6 -> expose the deployment
+#kubectl expose deployment nginx --name=nginx-svc --port=80 --target-port=80
+service/nginx-svc exposed
+
+Step-7 -> Get the list of services that are running
+#kubectl get svc
+NAME         TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1      <none>        443/TCP   87m
+nginx-svc    ClusterIP   10.101.86.24   <none>        80/TCP    5s
+
+Step-8 -> Get the endpoint to check the IP and the port
+#kubectl get endpoints nginx-svc
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME        ENDPOINTS      AGE
+nginx-svc   10.1.0.42:80   11s
+
+Step-9 -> Create the ingress resouce (Routing Rule)
+#cat nginx-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: nginx.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-svc
+            port:
+              number: 80
+
+Step-10 -> Test for the syntax and apply the ingress route rule
+#kubectl apply -f nginx-ingress.yaml --dry-run=server --validate=true
+ingress.networking.k8s.io/nginx-ingress created (server dry run)
+#kubectl apply -f nginx-ingress.yaml 
+ingress.networking.k8s.io/nginx-ingress created
+
+Step-11 -> Get the ingress table
+#kubectl get ingress
+NAME            CLASS   HOSTS         ADDRESS   PORTS   AGE
+nginx-ingress   nginx   nginx.local             80      4s
+
+Step-12 --> Describe the ingress 
+#kubectl describe ingress nginx-ingress
+Name:             nginx-ingress
+Labels:           <none>
+Namespace:        default
+Address:          
+Ingress Class:    nginx
+Default backend:  <default>
+Rules:
+  Host         Path  Backends
+  ----         ----  --------
+  nginx.local  
+               /   nginx-svc:80 (10.1.0.42:80)
+Annotations:   <none>
+Events:
+  Type    Reason  Age   From                      Message
+  ----    ------  ----  ----                      -------
+  Normal  Sync    15s   nginx-ingress-controller  Scheduled for sync
+
+Step-13 -> Add the hostname in /etc/hosts
+
+cat /etc/hosts
+127.0.0.1	nginx.local
+
+http://nginx.local
