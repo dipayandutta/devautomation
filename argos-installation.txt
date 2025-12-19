@@ -1,0 +1,23 @@
+# Create argo namespace
+kubectl create ns argo
+# Check for the namespace
+kubectl get ns
+# Install argo in the argo namespace
+kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+# Check for the running pods
+kubectl get pods -n argo
+# check for the services
+kubectl get svc -n argo
+# Retrive argoCD admin Credentials
+kubectl get secret -n argo argocd-initial-admin-secret -o yaml
+
+# Decode the password
+echo -n "<password>" | base64 -d
+
+# Argo CD web interface
+kubectl port-forward svc/argocd-server -n argo 2746:443
+
+# login to the web interface
+https://localhost:2746
+username -> admin
+password -> <Decoded Password>
