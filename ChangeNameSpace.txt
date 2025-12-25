@@ -1,0 +1,9 @@
+Change Namespace in kubernets
+ kubectl config set-context --current --namespace=nginx-deployment
+Context "docker-desktop" modified.
+
+Get the name of the current namespace
+kubectl config view --minify | grep namespace
+
+
+
