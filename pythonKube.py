@@ -1,4 +1,8 @@
 from kubernetes import client, config
+from google import genai
+import os
+
+gemClient = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 SYSTEM_NAMESPACES = {
 	"kube-system",
@@ -21,6 +25,66 @@ def getKubeConfig():
 	apps_v1 = client.AppsV1Api()
 	return v1,apps_v1
 
+def collect_cluster_state(v1, apps_v1):
+    output = []
+
+    # Nodes
+    nodes = v1.list_node().items
+    output.append(f"Number of Nodes: {len(nodes)}")
+    for n in nodes:
+        output.append(f"Node: {n.metadata.name}")
+
+    # Services
+    output.append("\nServices:")
+    svcs = v1.list_service_for_all_namespaces().items
+    for s in svcs:
+        output.append(f"{s.metadata.namespace}->{s.metadata.name}")
+
+    # Deployments
+    output.append("\nDeployments:")
+    deploys = apps_v1.list_deployment_for_all_namespaces().items
+    for d in deploys:
+        output.append(f"{d.metadata.namespace}->{d.metadata.name}")
+
+    # Pods
+    output.append("\nPods:")
+    pods = v1.list_pod_for_all_namespaces().items
+    for p in pods:
+        output.append(
+            f"{p.metadata.namespace}->{p.metadata.name} "
+            f"[{p.status.phase}] "
+            f"CreatedAt={p.metadata.creation_timestamp}"
+        )
+
+    return "\n".join(output)
+
+
+def ask_gemini_with_cluster_context(cluster_state, user_prompt):
+    prompt = f"""
+You are a Kubernetes expert assistant.
+
+Below is the current Kubernetes cluster state:
+
+====================
+{cluster_state}
+====================
+
+User request:
+"{user_prompt}"
+
+Your task:
+1. Explain what the user wants
+2. Suggest the correct Kubernetes approach
+3. Warn if there are risks (SNO cluster, resource usage, etc.)
+4. Do NOT execute commands
+"""
+
+    response = gemClient.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
+
+    return response.text
 
 def getNodeDetails(v1):
 	nodes = v1.list_node().items
@@ -41,36 +105,12 @@ def getNamespaces(v1):
 		print(namespace.metadata.name)
 
 def getPods(v1):
-	#pods = v1.list_pod_for_all_namespaces()
-	#print("List all Pods")
-	#print("---------------")
-	#for p in pods.items:
-	#	print(f"{p.metadata.namespace}--> {p.metadata.name} [{p.status.phase}]")
-	pods = v1.list_pod_for_all_namespaces().items
+	pods = v1.list_pod_for_all_namespaces()
+	print("List all Pods")
+	print("---------------")
+	for p in pods.items:
+		print(f"{p.metadata.namespace}--> {p.metadata.name} [{p.status.phase}]")
 
-	systemPods = []
-	userPods = []
-	
-	for pod in pods:
-		entry = f"{pod.metadata.namespace}-->{pod.metadata.name}[{pod.status.phase}]"
-		entryCreationTimeStamp = pod.metadata.creation_timestamp
-
-		if pod.metadata.namespace in SYSTEM_NAMESPACES:
-			systemPods.append(entry)
-		else:
-			userPods.append((entry,entryCreationTimeStamp))
-
-
-		print("List all Pods")
-		print("---------------")
-		print("System Pods")
-		print("----------------")
-		for pod in systemPods:
-			print(pod)
-		print("User Created Pods")
-		print("------------------")
-		for pod,timeStamp in userPods:
-			print(f"{pod} | CreatedAt = {timeStamp}")
 		
 def getEvents(v1):
 	events = v1.list_event_for_all_namespaces()
@@ -106,6 +146,21 @@ def getDeployment(apps_v1):
 	for deploy in deployments.items:
 		print(f"{deploy.metadata.namespace}-->{deploy.metadata.name}")
 
+def gemini(v1,apps_v1):
+	print("\nEnter prompt for Gemini:")
+	user_prompt = input("> ")
+
+	cluster_state = collect_cluster_state(v1, apps_v1)
+
+	gemini_response = ask_gemini_with_cluster_context(
+    cluster_state,
+    user_prompt
+	)
+
+	print("\nGemini Response")
+	print("----------------")
+	print(gemini_response)
+
 
 def main():
 	v1,apps_v1 = getKubeConfig()
@@ -116,5 +171,7 @@ def main():
 	getPods(v1)
 	getEvents(v1)
 	getNamespaces(v1)
+	gemini(v1,apps_v1)
+	collect_cluster_state(v1, apps_v1)
 if __name__ == '__main__':
 	main()
