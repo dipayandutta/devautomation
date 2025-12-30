@@ -1,4 +1,4 @@
-# 🧠 AI-Powered Kubernetes Practice Lab (Python + Gemini)
+# AI-Powered Kubernetes Practice (Python + Gemini)
 
 <p align="center">
   <img src="gemini-kube.png" width="700">
