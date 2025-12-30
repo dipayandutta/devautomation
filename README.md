@@ -25,10 +25,10 @@ It is designed for **learning, experimenting, and understanding Kubernetes inter
 
 ## What This Project Does
 
-✔ Detects cluster type (Single Node / Multi Node)  
-✔ Lists Nodes, Namespaces, Pods, Services, Deployments, Events  
-✔ Segregates **system vs user workloads**  
-✔ Captures **pod creation timestamps**  
-✔ Sends **live cluster state to Gemini**  
-✔ Accepts **runtime prompts** like:
+-> Detects cluster type (Single Node / Multi Node)  
+-> Lists Nodes, Namespaces, Pods, Services, Deployments, Events  
+-> Segregates **system vs user workloads**  
+-> Captures **pod creation timestamps**  
+-> Sends **live cluster state to Gemini**  
+-> Accepts **runtime prompts** like:
 
